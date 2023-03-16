@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+spec:
+  selector:
+    matchLabels:
+      app: postgres
+  replicas: 3
+  serviceName: postgres-service
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:12
+        ports:
+        - name: postgresql
+          containerPort: 5432
+        readinessProbe:
+          tcpSocket:
+            port: 5432
+          initialDelaySeconds: 10
+          timeoutSeconds: 5
+        livenessProbe:
+          tcpSocket:
+            port: 5432
+          initialDelaySeconds: 10
+          timeoutSeconds: 5
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+        readinessProbe:
+          exec:
+            command: ["psql", "-U", "postgres", "-c", "SELECT 1"]
+          initialDelaySeconds: 10
+          periodSeconds: 2
+          timeoutSeconds: 1
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/postgresql/data
+        volumeMounts:
+        - name: init-scripts
+          mountPath: /docker-entrypoint-initdb.d
+        env:
+        - name: POSTGRES_PASSWORD
+          value: IKge6geoZHio
+      volumes:
+      - name: init-scripts
+        configMap:
+          name: postgresql-config
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ "ReadWriteMany" ]
+      storageClassName: "nfs-client"
+      resources:
+        requests:
+          storage: 1Gi
